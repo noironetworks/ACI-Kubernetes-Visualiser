@@ -61,6 +61,42 @@ class VkaciEnvVariables(object):
         else:
             return self.dict_env
 
+class KubernetesApi(object):
+    '''Class to execute Kubernetes API calls'''
+    def __init__(self) -> None:
+        super.__init__()
+
+    def load_kube_config(self, config_file):
+        config.load_kube_config(config_file = config_file)
+        self.v1 = client.CoreV1Api()
+        self.custom_obj = client.CustomObjectsApi()
+
+    def load_incluster_config(self):
+        config.load_incluster_config()
+        self.v1 = client.CoreV1Api()
+        self.custom_obj = client.CustomObjectsApi()
+
+    def read_namespaced_pod(self, pod, ns):
+        return self.v1.read_namespaced_pod(pod, ns)
+
+    def list_pod_for_all_namespaces(self):
+        return self.v1.list_pod_for_all_namespaces(watch=False)
+
+    def list_node(self):
+        return self.v1.list_node(watch=False)
+
+    def list_service_for_all_namespaces(self):
+        return self.v1.list_service_for_all_namespaces(watch=False)
+
+    def get_cluster_custom_object(self, group, version, name, plural):
+        return self.custom_obj.get_cluster_custom_object(
+            group=group,
+            version=version,
+            name=name,
+            plural=plural
+        )
+    
+
 class ApicMethodsResolve(object):
     '''Class to execute APIC Call to resolve Objects'''
     def __init__(self) -> None:
@@ -156,15 +192,19 @@ class ApicMethodsResolve(object):
         #Like this shouldn't crash
         return path
 
+    def useX509CertAuth(self, apic:Node, cert_user, cert_name, key_path):
+        apic.useX509CertAuth(cert_user, cert_name, key_path)
+
 class VkaciBuilTopology(object):
     ''' Class to build the topology'''
-    def __init__(self, env:VkaciEnvVariables, apic_methods:ApicMethodsResolve) -> None:
+    def __init__(self, env:VkaciEnvVariables, apic_methods:ApicMethodsResolve, k8s:KubernetesApi) -> None:
         super().__init__()
         self.pod = {}
         self.topology = { 'nodes': {}, 'services': {}}
         self.bgp_info = {}
         self.env = env
         self.apic_methods = apic_methods
+        self.k8s = k8s
 
         if self.env.tenant is not None and self.env.vrf is not None:
             self.aci_vrf = 'uni/tn-' + self.env.tenant + '/ctx-' + self.env.vrf
@@ -174,14 +214,11 @@ class VkaciBuilTopology(object):
 
         ## Configs can be set in Configuration class directly or using helper utility
         if self.is_local_mode(): 
-            config.load_kube_config(config_file = self.env.kube_config)
+            k8s.load_kube_config(self.env.kube_config)
         elif self.is_cluster_mode():
-            config.load_incluster_config()
+            k8s.load_incluster_config()
         else:
             logger.error("Invalid Mode, %s. Only LOCAL or CLUSTER is supported.", self.env.mode)
-
-        self.v1 = client.CoreV1Api()
-        self.custom_obj = client.CustomObjectsApi()
 
     def is_local_mode(self):
         '''Check if we are running in local mode: Not in a K8s cluster'''
@@ -248,7 +285,7 @@ class VkaciBuilTopology(object):
         # Try to get Cluster AS from Calico Config
         try: 
             logger.debug("Try to detect Calico")
-            res =  self.custom_obj.get_cluster_custom_object(
+            res =  self.k8s.get_cluster_custom_object(
                 group="crd.projectcalico.org",
                 version="v1",
                 name="default",
@@ -267,7 +304,7 @@ class VkaciBuilTopology(object):
             for pod in pods:
                 if "kube-router" in pod:
                     #I just need one so I break immediately
-                    kr_pod = self.v1.read_namespaced_pod(pod,'kube-system')
+                    kr_pod = self.k8s.read_namespaced_pod(pod,'kube-system')
                     break
             if kr_pod:
                 for arg in kr_pod.spec.containers[0].args:
@@ -434,11 +471,11 @@ class VkaciBuilTopology(object):
             if self.is_local_mode():
                 logger.info("Running in Local Mode")
                 #logger.debug("using %s as user name, %s as certificate name and %s as key path", self.env.cert_user, self.env.cert_name, self.env.key_path)
-                apic.useX509CertAuth(self.env.cert_user, self.env.cert_name, self.env.key_path)
+                self.apic_methods.useX509CertAuth(apic, self.env.cert_user, self.env.cert_name, self.env.key_path)
             elif self.is_cluster_mode():
                 logger.info("Running in Cluster Mode") 
                 #logger.debug("using %s as user name, %s as certificate name and key is loaded as a K8s Secret ", self.env.cert_user, self.env.cert_name)
-                apic.useX509CertAuth(self.env.cert_user, self.env.cert_name, '/usr/local/etc/aci-cert/user.key')
+                self.apic_methods.useX509CertAuth(apic, self.env.cert_user, self.env.cert_name, '/usr/local/etc/aci-cert/user.key')
             else:
                 logger.error("MODE can only be LOCAL or CLUSTER but %s was given", self.env.mode)
                 return
@@ -446,7 +483,7 @@ class VkaciBuilTopology(object):
 
         #Load all the POD, Services and Nodes in Memory. 
         logger.info("Loading K8s Pods in Memory")
-        ret = self.v1.list_pod_for_all_namespaces(watch=False)
+        ret = self.k8s.list_pod_for_all_namespaces()
         for i in ret.items:
             # Ensure the node has a name, if a POD is Pening there will be no node name.
             if i.spec.node_name:
@@ -465,7 +502,7 @@ class VkaciBuilTopology(object):
                     "labels": i.metadata.labels if i.metadata.labels is not None else {}
                     }
                     
-        pro = self.v1.list_node(watch=False)
+        pro = self.k8s.list_node()
         for i in pro.items:
             n = i.metadata.name
             if n in self.topology['nodes'].keys():
@@ -474,7 +511,7 @@ class VkaciBuilTopology(object):
         self.update_bgp_info(self.apics[0])
 
         logger.info("Loading K8s Services in Memory")
-        ret = self.v1.list_service_for_all_namespaces(watch=False)
+        ret = self.k8s.list_service_for_all_namespaces()
         for i in ret.items:
             if i.metadata.namespace not in self.topology['services']:
                 self.topology['services'][i.metadata.namespace] = []

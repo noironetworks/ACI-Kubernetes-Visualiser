@@ -1,11 +1,37 @@
 #!/usr/local/bin/python3
 from flask import Flask, render_template, request, redirect
-from  graph import VkaciTable, VkaciGraph, VkaciBuilTopology, VkaciEnvVariables, ApicMethodsResolve
+from  graph import VkaciTable, VkaciGraph, VkaciBuilTopology, VkaciEnvVariables, ApicMethodsResolve, KubernetesApi
+import vkaci_mocks
+import argparse
 
+
+def init_argparse() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        usage="%(prog)s",
+        description="Running vkaci"
+    )
+    parser.add_argument(
+        "-v", "--version", action="version",
+        version = f"{parser.prog} version 1.0.0"
+    )
+    parser.add_argument('--test', action="store_true")
+    parser.add_argument('--neo4jp')
+    return parser
+
+parser = init_argparse()
+args = parser.parse_args()
 
 app = Flask(__name__, template_folder='template',static_folder='template/assets')
-env = VkaciEnvVariables()
-topology = VkaciBuilTopology(env, ApicMethodsResolve())
+
+if args.test:
+    vars = vkaci_mocks.mock_vars
+    vars["NEO4J_URL"] = "neo4j://localhost:7687"
+    vars["NEO4J_PASSWORD"] = args.neo4jp
+    env = VkaciEnvVariables(vars)
+    topology = VkaciBuilTopology(env, vkaci_mocks.ApicMethodsMock(),  vkaci_mocks.KubernetesApiMock())
+else:
+    env = VkaciEnvVariables()
+    topology = VkaciBuilTopology(env, ApicMethodsResolve(), KubernetesApi())
 graph = VkaciGraph(env,topology)
 table = VkaciTable(topology)
 
