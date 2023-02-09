@@ -1,0 +1,30 @@
+apiVersion: v1
+entries:
+  vkaci:
+  - apiVersion: v2
+    appVersion: v1.0.1
+    created: "2023-01-28T11:09:46.7706686+10:00"
+    description: A Helm chart for VKACI
+    digest: 655e5a9dd4dc3966461574e44b5dc08557e2a35c5a16a4f23a3656c907d10a8c
+    maintainers:
+    - email: vkaci-tool@cisco.com
+      name: samitab, camrossi
+    name: vkaci
+    type: application
+    urls:
+    - https://datacenter.github.io/ACI-Kubernetes-Visualiser/vkaci-1.0.1.tgz
+    version: 1.0.1
+  - apiVersion: v2
+    appVersion: 1.0rc2
+    created: "2023-01-28T11:09:46.762648+10:00"
+    description: A Helm chart for VKACI
+    digest: 85ba6c57d2327a031f7765956c1408e6a72b217a9965584842ba0c6f0674a52f
+    maintainers:
+    - email: vkaci-tool@cisco.com
+      name: samitab, camrossi
+    name: vkaci
+    type: application
+    urls:
+    - https://datacenter.github.io/ACI-Kubernetes-Visualiser/vkaci-0.1.0.tgz
+    version: 0.1.0
+generated: "2023-01-28T11:09:46.7509775+10:00"
