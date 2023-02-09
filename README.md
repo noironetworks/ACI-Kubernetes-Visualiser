@@ -168,7 +168,7 @@ A Helm chart for Vkaci has been created to enable simple deployment of the Vkaci
 
 The helm chart can currently be found in the source code for VKACI and is also available in the following repo:
 
-<https://samiib.github.io/vkaci-chart>
+<https://datacenter.github.io/ACI-Kubernetes-Visualiser>
 
 #### Required Variables:**
 
