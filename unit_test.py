@@ -495,6 +495,22 @@ class TestVkaciGraph(unittest.TestCase):
         with patch('app.graph.VkaciBuilTopology.get_calico_custom_object', MagicMock(return_value={})):
             self.assert_cluster_as('56003')
 
+    # AS numbers are intentionally repeated for testing.
+    openshift_policies = {
+        "items": [
+            {"spec": {"virtualRouters": [
+                {'localASN': 56004}, {'localASN': 56004}]}},
+            {"spec": {"virtualRouters": [{'localASN': 56004}]}}
+        ]
+    }
+    @patch('kubernetes.client.CoreV1Api.read_namespaced_pod', MagicMock(return_value=None))
+    @patch('app.graph.VkaciBuilTopology.list_cilium_custom_objects', MagicMock(return_value=None))
+    @patch('app.graph.VkaciBuilTopology.list_openshift_custom_objects', MagicMock(return_value=openshift_policies))
+    def test_openshift_bgp_as_detection(self):
+        """Test that the bgp AS is detected with OpenShift"""
+        with patch('app.graph.VkaciBuilTopology.get_calico_custom_object', MagicMock(return_value={})):
+            self.assert_cluster_as('56004')
+
 
     # Different AS numbers in Cilium is not supported.
     invalid_cilium_policies = {
@@ -511,9 +527,26 @@ class TestVkaciGraph(unittest.TestCase):
         with patch('app.graph.VkaciBuilTopology.get_calico_custom_object', MagicMock(return_value={})):
             self.assert_cluster_as(None)
 
+     # Different AS numbers in OpenShift is not supported.
+    invalid_openshift_policies = {
+        "items": [
+            {"spec": {"virtualRouters": [
+                {'localASN': 56007}, {'localASN': 56008}]}},
+            {"spec": {"virtualRouters": [{'localASN': 56009}]}}
+        ]
+    }
+    @patch('kubernetes.client.CoreV1Api.read_namespaced_pod', MagicMock(return_value=None))
+    @patch('app.graph.VkaciBuilTopology.list_cilium_custom_objects', MagicMock(return_value=None))
+    @patch('app.graph.VkaciBuilTopology.list_openshift_custom_objects', MagicMock(return_value=invalid_openshift_policies))
+    def test_invalid_openshift_bgp_as_detection(self):
+        """Test that the bgp AS is not detected with invalid cilium config"""
+        with patch('app.graph.VkaciBuilTopology.get_calico_custom_object', MagicMock(return_value={})):
+            self.assert_cluster_as(None)
+
 
     @patch('kubernetes.client.CoreV1Api.read_namespaced_pod', MagicMock(return_value=None))
     @patch('app.graph.VkaciBuilTopology.list_cilium_custom_objects', MagicMock(return_value=[]))
+    @patch('app.graph.VkaciBuilTopology.list_openshift_custom_objects', MagicMock(return_value=[]))
     def test_invalid_as_detection(self):
         """Test that the bgp AS is not detected with no valid config"""
         with patch('app.graph.VkaciBuilTopology.get_calico_custom_object', MagicMock(return_value={})):

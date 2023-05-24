@@ -298,6 +298,26 @@ class VkaciBuilTopology(object):
                 logger.info('Cilium Detected! More than one AS is used, this is an unsupported configuration!')
         except Exception as e:
             pass
+
+        # Try to get Cluster AS from OpenShift Config
+        try:
+            # VKACI only supports a single AS per Cluster. A set is used to ensure that
+            asn_set = set()
+            logger.info("Try to detect OpenShift")
+            # Get all the OpenShiftBGPPeeringPolicies traverse them and the virtualRouters and add all the found ASN in the set
+            OpenShiftBGPPeeringPolicies = self.list_openshift_custom_objects()
+            for policy in OpenShiftBGPPeeringPolicies['items']:
+                for virtualrotuer in policy['spec']['virtualRouters']:
+                    asn_set.add(str(virtualrotuer['localASN']))
+            if len(asn_set) == 1:
+                asn = asn_set.pop()
+                logger.info('OpenShift Detected! Cluster AS=%s',asn)
+                return asn
+            elif len(asn_set) > 1:
+                logger.info('OpenShift Detected! More than one AS is used, this is an unsupported configuration!')
+        except Exception as e:
+            pass
+
         if asn is None:
             logger.error("Can't detect K8s Cluster AS, BGP topology will not work corectly")
         return asn
@@ -312,6 +332,13 @@ class VkaciBuilTopology(object):
 
     def list_cilium_custom_objects(self):
         return self.custom_obj.list_cluster_custom_object(group="cilium.io", version="v2alpha1", plural="ciliumbgppeeringpolicies")
+
+    def list_openshift_custom_objects(self):
+        return self.custom_obj.list_cluster_custom_object(
+            group="openshift.io",
+            version="v1",
+            plural="openshiftbgppeeringpolicies"
+        )
 
     def update_bgp_info(self, apic:Node):
         '''Get the BGP information'''
