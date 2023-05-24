@@ -539,7 +539,7 @@ class TestVkaciGraph(unittest.TestCase):
     @patch('app.graph.VkaciBuilTopology.list_cilium_custom_objects', MagicMock(return_value=None))
     @patch('app.graph.VkaciBuilTopology.list_openshift_custom_objects', MagicMock(return_value=invalid_openshift_policies))
     def test_invalid_openshift_bgp_as_detection(self):
-        """Test that the bgp AS is not detected with invalid cilium config"""
+        """Test that the bgp AS is not detected with invalid openshift config"""
         with patch('app.graph.VkaciBuilTopology.get_calico_custom_object', MagicMock(return_value={})):
             self.assert_cluster_as(None)
 
