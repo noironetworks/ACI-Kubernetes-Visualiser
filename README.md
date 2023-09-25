@@ -80,6 +80,14 @@ Cluster Network Graph Example: Without specific Namespace
 
 ![Cluster Network Graph Example: Without specific Namespace](readme-img/fig4.png)
 
+Cluster Network Graph Example: Sriov Links
+
+![Cluster Network Graph Example: Sriov Links](readme-img/fig8.png)
+
+Cluster Network Graph Example: MacVlan Links
+
+![Cluster Network Graph Example: MacVlan Links](readme-img/fig9.png)
+
 #### Table View
 
 The secondary view of Vkaci outlines the cluster network in different tree table configurations.
