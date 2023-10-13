@@ -82,7 +82,7 @@ Cluster Network Graph Example: Without specific Namespace
 
 VKACI can have 3 types of topologies based on the setup.
 1. Baremetal: In this case the nodes are directly connected to the leaf(s) 
-2. Esxi5 and Nutanix: In this case, the nodes run on a hypervisor which in turn is connected to the leaf(s)
+2. Esxi5 and Nutanix: In this case, the nodes run on a hypervisor which in turn is connected to the leaf(s). The below image displays the Nutanix case (readme-img/fig11.png)
 3. Hybrid: This is a combination of baremetal & Esxi5 and Nutanix where some nodes are directly connected to the leaf(s) and some are running on a hypervisor which is connected to the leaf(s)
 
 The VKACI has the support of secondary links as well. It can have SRIOV and MacVlan links. For better visualization, VKACI provides three different filtered views of the topology.
